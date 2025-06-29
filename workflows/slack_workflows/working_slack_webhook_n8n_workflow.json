@@ -1,0 +1,322 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-challenge",
+              "leftValue": "={{ $json.challenge }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0de0e637-423d-4da2-805e-b30f6c51559e",
+      "name": "Is Challenge?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/plain"
+              }
+            ]
+          }
+        }
+      },
+      "id": "2867c653-0c03-4cc6-bffd-b13948290c2a",
+      "name": "Respond Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2320,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "options": {}
+      },
+      "id": "1d5ba664-3429-47d6-9465-4f11ba6a4f61",
+      "name": "OpenAI Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        2520,
+        940
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "T31aK1RirDnrcIqD",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "clean-message",
+              "name": "message_text",
+              "type": "string",
+              "value": "={{ $json.text.replace(/<@[A-Z0-9]+>/g, '').trim() }}"
+            },
+            {
+              "id": "user-id",
+              "name": "user_id",
+              "type": "string",
+              "value": "={{ $json.user }}"
+            },
+            {
+              "id": "channel-id",
+              "name": "channel_id",
+              "type": "string",
+              "value": "={{ $json.channel }}"
+            },
+            {
+              "id": "thread-ts",
+              "name": "thread_ts",
+              "type": "string",
+              "value": "={{ $json.ts }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "38a639a0-25ae-42a2-9714-42c0574e3525",
+      "name": "Clean Message Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        2280,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a snarky robot. Your job is to reframe the message given and respond by reframing the users message in a snarky, sarcastic and funny way. You must always include emoji's in your response. {{ $json.message_text }}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "id": "b63963a1-a993-4863-a18e-196a4ed170a3",
+      "name": "Hilarious Reframer AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.5,
+      "position": [
+        2620,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "final-message",
+              "name": "formatted_response",
+              "type": "string",
+              "value": "=<@{{ $('Clean Message Data').item.json.user_id }}> {{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "201c9c3e-bc24-4bee-9aba-acdecddd48af",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        3120,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Clean Message Data').item.json.channel_id }}"
+        },
+        "text": "={{ $json.formatted_response }}",
+        "otherOptions": {
+          "thread_ts": {
+            "replyValues": {
+              "thread_ts": "={{ $('Clean Message Data').item.json.thread_ts }}"
+            }
+          }
+        }
+      },
+      "id": "6a9bd452-5f4e-4b15-8ada-be2d07db8735",
+      "name": "Reply in Thread",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        3420,
+        700
+      ],
+      "webhookId": "7dd4fdb1-4cde-4a27-a335-ad71f612ef6a",
+      "credentials": {
+        "slackApi": {
+          "id": "lpf52Ha1kUKLRctX",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 🚀 Much Simpler Setup!\n\n### 1. Prerequisites\n- Slack Bot with these permissions:\n  - `app_mentions:read`\n  - `chat:write`\n  - `channels:history`\n  - `channels:read`\n- Bot added to channels\n\n### 2. N8N Setup\n- Add Slack credentials (Bot Token)\n- Add OpenAI credentials\n- Update credential IDs in nodes\n- Activate workflow\n\n### 3. Test\n- Mention your bot: `@YourBot I need coffee`\n- Get hilarious response!\n\n### ✅ No webhooks needed!\n### ✅ Works with localhost!\n### ✅ No ngrok required!",
+        "height": 650,
+        "width": 300,
+        "color": 4
+      },
+      "id": "926bd481-2b4a-4d0c-9036-005a95a85bac",
+      "name": "Simple Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "trigger": [
+          "app_mention"
+        ],
+        "watchWorkspace": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.slackTrigger",
+      "typeVersion": 1,
+      "position": [
+        1720,
+        700
+      ],
+      "id": "cf5aab91-4e66-443e-821b-78c9f9081de0",
+      "name": "Slack Trigger",
+      "webhookId": "0dc22bb7-acc0-4e03-b53d-1089c115f19d",
+      "credentials": {
+        "slackApi": {
+          "id": "lpf52Ha1kUKLRctX",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Is Challenge?": {
+      "main": [
+        [
+          {
+            "node": "Respond Challenge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clean Message Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Hilarious Reframer AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Message Data": {
+      "main": [
+        [
+          {
+            "node": "Hilarious Reframer AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hilarious Reframer AI": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Reply in Thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Challenge?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "123d19b4-89f1-4383-80a2-62cc6809a1e6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "91f768f8c1fef9702d0629c4a6cf496a7e1d7591e17d0fa58af34c0226ec076c"
+  },
+  "id": "F4iXphvUfrD899jG",
+  "tags": []
+}
